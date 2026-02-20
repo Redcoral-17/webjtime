@@ -19,7 +19,6 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             SELECT t FROM Task t
             WHERE t.date = :date
               AND (:excludeId IS NULL OR t.id <> :excludeId)
-              AND (t.status = 'ACTIVE' OR t.status = 'COMPLETED')
               AND t.startTime < :end
               AND t.endTime   > :start
             """)
