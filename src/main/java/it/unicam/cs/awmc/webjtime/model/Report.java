@@ -39,19 +39,22 @@ public class Report {
      */
     private LocalDate endDate;
     /**
-     * Progetto associato al report.
+     * Progetto associato al report (opzionale).
+     * FK reale verso {@link Project} per garantire integrità referenziale.
      */
-    private String project;
+    @ManyToOne
+    @JoinColumn(name = "project_id")
+    private Project project;
 
     /**
-     * Costruisce una nuovo Report con i parametri forniti.
+     * Costruisce un nuovo Report con i parametri forniti.
      *
-     * @param name nome
+     * @param name      nome
      * @param startDate data di inizio
-     * @param endDate data di fine
-     * @param project progetto
+     * @param endDate   data di fine
+     * @param project   progetto (può essere null)
      */
-    public Report(String name, LocalDate startDate, LocalDate endDate, String project) {
+    public Report(String name, LocalDate startDate, LocalDate endDate, Project project) {
         this.name = name;
         this.startDate = startDate;
         this.endDate = endDate;
