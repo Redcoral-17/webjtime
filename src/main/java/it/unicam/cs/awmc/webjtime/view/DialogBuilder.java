@@ -1,4 +1,4 @@
-﻿package it.unicam.cs.awmc.webjtime.view;
+package it.unicam.cs.awmc.webjtime.view;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;

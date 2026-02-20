@@ -1,4 +1,4 @@
-﻿package it.unicam.cs.awmc.webjtime.view;
+package it.unicam.cs.awmc.webjtime.view;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.notification.Notification;
@@ -108,8 +108,13 @@ public class ProjectList extends VerticalLayout {
             showError("Cannot delete a project with associated tasks");
             return;
         }
-        projectRepo.delete(selected);
-        refresh();
-        showSuccess("Project deleted");
+        DialogBuilder.build("Delete Project",
+                "Delete",
+                dialog -> {
+                    projectRepo.delete(selected);
+                    dialog.close();
+                    refresh();
+                    showSuccess("Project deleted");
+                });
     }
 }
