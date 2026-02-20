@@ -14,4 +14,4 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
 Vaadin:
-  launch-browser: true
+  launch-browser: false
