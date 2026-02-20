@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: webjtime
+vaadin:
+  launch-browser: true
