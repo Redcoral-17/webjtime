@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: webjtime
       POSTGRES_USER: webjtime
-      POSTGRES_PASSWORD: webjtime
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -12,20 +12,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   app:
     build: .
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
       DATABASE_URL: jdbc:postgresql://db:5432/webjtime
       DATABASE_USERNAME: webjtime
-      DATABASE_PASSWORD: webjtime
-      ADMIN_USERNAME: red_coral
-      ADMIN_PASSWORD: Fico@#6013
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:

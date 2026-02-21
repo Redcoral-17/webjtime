@@ -4,3 +4,6 @@
 build/
 *.md
 file/
+**/*.class
+.env
+out/

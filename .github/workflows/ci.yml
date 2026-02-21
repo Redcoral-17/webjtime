@@ -29,6 +29,8 @@ jobs:
         run: ./gradlew test --no-daemon
         env:
           SPRING_PROFILES_ACTIVE: dev
+          ADMIN_USERNAME: ci_admin
+          ADMIN_PASSWORD: ci_password_placeholder
 
       - name: Upload test report
         if: always()
