@@ -1,6 +1,7 @@
 package it.unicam.cs.awmc.webjtime.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -16,7 +17,7 @@ import lombok.Setter;
 @Getter
 @NoArgsConstructor
 @Setter
-@Table
+@Table(name = "projects")
 public class Project {
     /**
      * Identificatore univoco del progetto generato automaticamente.
@@ -27,11 +28,14 @@ public class Project {
     /**
      * Nome del progetto.
      */
+    @NotBlank
+    @Column(name = "name", nullable = false)
     private String name;
     /**
      * Stato del progetto.
      */
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private Status status;
 
     /**
@@ -45,4 +49,3 @@ public class Project {
         this.status = Status.ACTIVE;
     }
 }
-

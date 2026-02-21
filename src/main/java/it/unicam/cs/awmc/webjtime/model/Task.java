@@ -1,6 +1,8 @@
 package it.unicam.cs.awmc.webjtime.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -20,7 +22,7 @@ import java.time.LocalTime;
 @Getter
 @NoArgsConstructor
 @Setter
-@Table
+@Table(name = "tasks")
 public class Task {
     /**
      * Identificatore univoco della task generato automaticamente.
@@ -31,31 +33,42 @@ public class Task {
     /**
      * Nome della task.
      */
+    @NotBlank
+    @Column(name = "name", nullable = false)
     private String name;
     /**
      * Data associata alla task.
      */
+    @NotNull
+    @Column(name = "date", nullable = false)
     private LocalDate date;
     /**
      * Orario di inizio della task.
      */
+    @NotNull
+    @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
     /**
      * Orario di fine della task.
      */
+    @NotNull
+    @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
     /**
      * Durata precedente della task (viene utilizza per salvare la durata precedente).
      */
+    @Column(name = "old_duration")
     private Duration oldDuration;
     /**
      * Durata corrente calcolata tra startTime ed endTime.
      */
+    @Column(name = "duration")
     private Duration duration;
     /**
      * Stato della task.
      */
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private Status status;
     /**
      * Progetto al quale la task può appartenere.

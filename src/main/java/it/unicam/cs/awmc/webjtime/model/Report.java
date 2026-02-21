@@ -1,6 +1,7 @@
 package it.unicam.cs.awmc.webjtime.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -18,7 +19,7 @@ import java.time.LocalDate;
 @Getter
 @NoArgsConstructor
 @Setter
-@Table
+@Table(name = "reports")
 public class Report {
     /**
      * Identificatore univoco del report generato automaticamente.
@@ -29,14 +30,18 @@ public class Report {
     /**
      * Nome del report.
      */
+    @NotBlank
+    @Column(name = "name", nullable = false)
     private String name;
     /**
      * Data di inizio del report.
      */
+    @Column(name = "start_date")
     private LocalDate startDate;
     /**
      * Data di fine del report.
      */
+    @Column(name = "end_date")
     private LocalDate endDate;
     /**
      * Progetto associato al report (opzionale).
