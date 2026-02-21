@@ -10,6 +10,7 @@ Applicazione web per il **tracciamento del tempo** su task e progetti, sviluppat
 - [Architettura](#architettura)
 - [Stack tecnologico](#stack-tecnologico)
 - [Scelte progettuali](#scelte-progettuali)
+- [Sicurezza](#sicurezza)
 - [Prerequisiti](#prerequisiti)
 - [Build & Run](#build--run)
   - [Modalità sviluppo (locale)](#modalità-sviluppo-locale)
@@ -43,6 +44,15 @@ Applicazione web per il **tracciamento del tempo** su task e progetti, sviluppat
 - Pannello informativo: progetto, data inizio/fine, conteggio task attive/completate
 - **Eliminazione report**
 
+### 🔐 Autenticazione
+- Accesso protetto tramite **Spring Security** integrato con Vaadin Flow
+- Pagina di login dedicata (`/login`) con `LoginForm` di Vaadin, accessibile senza autenticazione
+- Tutte le altre view richiedono autenticazione (`@PermitAll` + `VaadinSecurityConfigurer`)
+- **Logout** disponibile direttamente nella navbar del layout principale
+- Utente amministratore creato automaticamente all'avvio tramite `DataInitializer` (se non già presente nel DB)
+- Password cifrata con **BCrypt**
+- Credenziali configurabili tramite variabili d'ambiente (`ADMIN_USERNAME`, `ADMIN_PASSWORD`)
+
 ---
 
 ## Architettura
@@ -56,16 +66,21 @@ Applicazione web per il **tracciamento del tempo** su task e progetti, sviluppat
 ┌─────────────────────▼────────────────────────┐
 │              Spring Boot App                 │
 │  ┌──────────────────────────────────────┐   │
+│  │       Security Layer (Spring)        │   │
+│  │  SecurityConfig │ UserDetailsService │   │
+│  │  Login View     │ DataInitializer    │   │
+│  ├──────────────────────────────────────┤   │
 │  │           View Layer (Vaadin)        │   │
 │  │  Calendar │ ProjectList │ ReportList │   │
 │  │           └── MainLayout ────────────│   │
 │  ├──────────────────────────────────────┤   │
 │  │         Repository Layer (JPA)       │   │
 │  │  TaskRepository │ ProjectRepository  │   │
-│  │               ReportRepository       │   │
+│  │  ReportRepository │ UserRepository   │   │
 │  ├──────────────────────────────────────┤   │
 │  │           Model Layer (JPA Entities) │   │
 │  │   Task │ Project │ Report │ Status   │   │
+│  │   User                               │   │
 │  └──────────────────────────────────────┘   │
 └─────────────────────┬────────────────────────┘
                       │
@@ -100,6 +115,7 @@ Applicazione web per il **tracciamento del tempo** su task e progetti, sviluppat
 |------------------|-----------------------------------|-----------|
 | Framework web    | Spring Boot                       | 4.0.3     |
 | UI Framework     | Vaadin Flow                       | 25.0.5    |
+| Sicurezza        | Spring Security (+ Vaadin integration) | —    |
 | Persistenza      | Spring Data JPA / Hibernate       | —         |
 | Database (prod)  | PostgreSQL                        | 16        |
 | Database (dev)   | H2 (in-memory)                    | 2.2.224   |
@@ -119,6 +135,28 @@ Applicazione web per il **tracciamento del tempo** su task e progetti, sviluppat
 - **`ddl-auto: update`** gestisce automaticamente le migrazioni dello schema del database a partire dalle entità JPA, adatto a un contesto accademico/prototipale.
 - Le task mantengono `oldDuration` per confrontare la durata stimata con quella effettiva a consuntivo, utile nella vista Report.
 - Il `Dockerfile` usa un build multi-stage: il primo stage (`eclipse-temurin:21-jdk`) compila e builda il frontend Vaadin, il secondo stage (`eclipse-temurin:21-jre`) contiene solo il JAR finale, mantenendo l'immagine leggera.
+- **Spring Security** è integrato tramite `VaadinSecurityConfigurer` per proteggere tutte le route Vaadin. Il `DataInitializer` crea automaticamente l'utente admin all'avvio se non esiste, cifrando la password con BCrypt. Le credenziali sono iniettate tramite le proprietà `app.admin.username` e `app.admin.password`, configurabili via variabili d'ambiente.
+
+---
+
+## Sicurezza
+
+Il flusso di autenticazione funziona come segue:
+
+1. L'utente non autenticato viene reindirizzato a `/login`
+2. Dopo il login corretto, viene reindirizzato alla pagina richiesta originariamente
+3. Il pulsante **Logout** nella navbar invalida la sessione e reindirizza a `/login`
+
+### Struttura dei file di sicurezza
+
+| File | Responsabilità |
+|------|----------------|
+| `SecurityConfig.java` | Configura `SecurityFilterChain` con Vaadin integration e `BCryptPasswordEncoder` |
+| `UserDetailsServiceImpl.java` | Implementa `UserDetailsService` per caricare l'utente dal DB |
+| `DataInitializer.java` | Crea l'utente admin all'avvio se non presente (legge da `app.admin.*`) |
+| `User.java` | Entità JPA per gli utenti (tabella `users`) |
+| `UserRepository.java` | Repository JPA con `findByUsername` |
+| `Login.java` | View Vaadin per il form di login (`@AnonymousAllowed`) |
 
 ---
 
@@ -217,6 +255,8 @@ I test usano il profilo `dev` con database H2 in-memory (nessuna dipendenza este
 | `DATABASE_URL`        | JDBC URL del database PostgreSQL       | `jdbc:postgresql://db:5432/webjtime` |
 | `DATABASE_USERNAME`   | Username del database                  | `webjtime`                      |
 | `DATABASE_PASSWORD`   | Password del database                  | `webjtime`                      |
+| `ADMIN_USERNAME`      | Username dell'utente admin applicazione | `red_coral`                    |
+| `ADMIN_PASSWORD`      | Password dell'utente admin applicazione | *(vedere docker-compose.yml)*  |
 
 I file di configurazione si trovano in `src/main/resources/`:
 - `application.yaml` — configurazione base (produzione)
@@ -225,6 +265,15 @@ I file di configurazione si trovano in `src/main/resources/`:
 ---
 
 ## Credenziali di prova
+
+### Accesso all'applicazione
+
+| Campo    | Valore        |
+|----------|---------------|
+| Username | `red_coral`   |
+| Password | `Fico@#6013`  |
+
+> L'utente viene creato automaticamente all'avvio dal `DataInitializer` se non già presente nel database.
 
 ### Database PostgreSQL (Docker Compose)
 
