@@ -13,12 +13,10 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
 import jakarta.annotation.security.PermitAll;
 import it.unicam.cs.awmc.webjtime.model.Project;
-import it.unicam.cs.awmc.webjtime.model.Status;
 import it.unicam.cs.awmc.webjtime.model.Task;
-import it.unicam.cs.awmc.webjtime.repository.ProjectRepository;
-import it.unicam.cs.awmc.webjtime.repository.TaskRepository;
+import it.unicam.cs.awmc.webjtime.service.ProjectService;
+import it.unicam.cs.awmc.webjtime.service.TaskService;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -45,14 +43,14 @@ public class Calendar extends VerticalLayout {
             .limit(24 * 4)
             .toList();
 
-    private final TaskRepository taskRepo;
-    private final ProjectRepository projectRepo;
+    private final TaskService taskService;
+    private final ProjectService projectService;
     private final DatePicker datePicker = new DatePicker("Date");
     private final Grid<Task> grid = new Grid<>(Task.class, false);
 
-    public Calendar(TaskRepository taskRepo, ProjectRepository projectRepo) {
-        this.taskRepo = taskRepo;
-        this.projectRepo = projectRepo;
+    public Calendar(TaskService taskService, ProjectService projectService) {
+        this.taskService = taskService;
+        this.projectService = projectService;
         configureGrid();
         configureDatePicker();
         Button addBtn    = new Button("Add Task",    e -> openAddTaskDialog());
@@ -85,13 +83,13 @@ public class Calendar extends VerticalLayout {
     private void refresh() {
         LocalDate selected = datePicker.getValue();
         if (selected == null) return;
-        grid.setItems(taskRepo.findByDateOrderByStartTimeAsc(selected));
+        grid.setItems(taskService.getTasksByDate(selected));
     }
 
     private void openAddTaskDialog() {
         TextField name = new TextField("Name");
         ComboBox<Project> project = new ComboBox<>("Project");
-        project.setItems(projectRepo.findByStatus(Status.ACTIVE));
+        project.setItems(projectService.getActiveProjects());
         project.setItemLabelGenerator(Project::getName);
         DatePicker date = new DatePicker("Date");
         date.setValue(datePicker.getValue());
@@ -100,52 +98,51 @@ public class Calendar extends VerticalLayout {
         DialogBuilder.build("Add Task", dialog -> {
             if (name.isEmpty()) { Notification.show("Name is required"); return; }
             if (date.isEmpty() || start.isEmpty() || end.isEmpty()) { Notification.show("Fill in all fields"); return; }
-            if (start.getValue().isAfter(end.getValue())) { Notification.show("Start cannot be after End"); return; }
-            if (hasOverlap(date.getValue(), start.getValue(), end.getValue(), null)) { Notification.show("A task already exists in this time slot"); return; }
-            taskRepo.save(new Task(name.getValue(), date.getValue(), start.getValue(), end.getValue(), project.getValue()));
-            dialog.close();
-            refresh();
-            showSuccess("Task added");
+            try {
+                taskService.addTask(name.getValue(), date.getValue(), start.getValue(), end.getValue(), project.getValue());
+                dialog.close();
+                refresh();
+                showSuccess("Task added");
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                Notification.show(ex.getMessage());
+            }
         }, name, project, date, start, end);
     }
 
     private void openEndTaskDialog() {
         grid.asSingleSelect().getOptionalValue().ifPresentOrElse(task -> {
-            if (task.getStatus() != Status.ACTIVE) { Notification.show("Task is already completed"); return; }
             ComboBox<LocalTime> start = timeComboBox("Actual Start");
             ComboBox<LocalTime> end   = timeComboBox("Actual End");
             start.setValue(task.getStartTime());
             end.setValue(task.getEndTime());
             DialogBuilder.build("End Task: " + task.getName(), "Confirm", dialog -> {
                 if (start.isEmpty() || end.isEmpty()) { Notification.show("Fill in both times"); return; }
-                if (start.getValue().isAfter(end.getValue())) { Notification.show("Start cannot be after End"); return; }
-                if (hasOverlap(task.getDate(), start.getValue(), end.getValue(), task.getId())) { Notification.show("Overlaps with another task"); return; }
-                task.setOldDuration(task.getDuration());
-                task.setStartTime(start.getValue());
-                task.setEndTime(end.getValue());
-                task.setDuration(Duration.between(start.getValue(), end.getValue()));
-                task.setStatus(Status.COMPLETED);
-                taskRepo.save(task);
-                dialog.close();
-                refresh();
-                showSuccess("Task completed");
+                try {
+                    taskService.completeTask(task, start.getValue(), end.getValue());
+                    dialog.close();
+                    refresh();
+                    showSuccess("Task completed");
+                } catch (IllegalArgumentException | IllegalStateException ex) {
+                    Notification.show(ex.getMessage());
+                }
             }, start, end);
         }, () -> Notification.show("Select a task first"));
     }
 
     private void deleteTask() {
         Task selected = grid.asSingleSelect().getValue();
-        if (selected == null || selected.getStatus() != Status.ACTIVE) {
-            showError("Select an ACTIVE task first");
-            return;
-        }
+        if (selected == null) { showError("Select an ACTIVE task first"); return; }
         DialogBuilder.build("Delete Task \"" + selected.getName() + "\"?",
                 "Delete",
                 dialog -> {
-                    taskRepo.delete(selected);
-                    dialog.close();
-                    refresh();
-                    showSuccess("Task deleted");
+                    try {
+                        taskService.deleteTask(selected);
+                        dialog.close();
+                        refresh();
+                        showSuccess("Task deleted");
+                    } catch (IllegalStateException ex) {
+                        Notification.show(ex.getMessage());
+                    }
                 });
     }
 
@@ -154,10 +151,5 @@ public class Calendar extends VerticalLayout {
         cb.setItems(TIME_SLOTS);
         cb.setItemLabelGenerator(t -> t.format(TIME_FMT));
         return cb;
-    }
-
-    /** Verifica sovrapposizioni delegando la query al DB tramite JPQL. */
-    private boolean hasOverlap(LocalDate date, LocalTime start, LocalTime end, Long excludeId) {
-        return !taskRepo.findOverlapping(date, start, end, excludeId).isEmpty();
     }
 }
