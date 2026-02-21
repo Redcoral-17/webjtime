@@ -21,6 +21,8 @@ services:
       DATABASE_URL: jdbc:postgresql://db:5432/webjtime
       DATABASE_USERNAME: webjtime
       DATABASE_PASSWORD: webjtime
+      ADMIN_USERNAME: red_coral
+      ADMIN_PASSWORD: Fico@#6013
     depends_on:
       db:
         condition: service_healthy
