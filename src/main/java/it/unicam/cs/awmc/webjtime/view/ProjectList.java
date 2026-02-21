@@ -7,6 +7,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import jakarta.annotation.security.PermitAll;
 import it.unicam.cs.awmc.webjtime.model.Project;
 import it.unicam.cs.awmc.webjtime.model.Status;
 import it.unicam.cs.awmc.webjtime.model.Task;
@@ -25,6 +26,7 @@ import static it.unicam.cs.awmc.webjtime.view.MainLayout.showSuccess;
  */
 @Route(value = "projects", layout = MainLayout.class)
 @PageTitle("Projects")
+@PermitAll
 public class ProjectList extends VerticalLayout {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private final ProjectRepository projectRepo;

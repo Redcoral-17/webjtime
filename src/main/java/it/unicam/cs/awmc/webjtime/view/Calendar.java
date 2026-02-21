@@ -11,6 +11,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
+import jakarta.annotation.security.PermitAll;
 import it.unicam.cs.awmc.webjtime.model.Project;
 import it.unicam.cs.awmc.webjtime.model.Status;
 import it.unicam.cs.awmc.webjtime.model.Task;
@@ -35,6 +36,7 @@ import static it.unicam.cs.awmc.webjtime.view.MainLayout.showSuccess;
 @Route(value = "calendar", layout = MainLayout.class)
 @RouteAlias(value = "", layout = MainLayout.class)
 @PageTitle("Calendar")
+@PermitAll
 public class Calendar extends VerticalLayout {
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
