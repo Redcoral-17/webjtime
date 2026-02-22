@@ -24,8 +24,12 @@ public class Project {
     private LocalDate endDate = LocalDate.now();
     @Enumerated(EnumType.STRING)
     private Status status = Status.ACTIVE;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    public Project(String n) {
+    public Project(String n, User u) {
         this.name = n;
+        this.user = u;
     }
 }

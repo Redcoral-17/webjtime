@@ -33,12 +33,17 @@ public class Task {
     @ManyToOne
     @JoinColumn(name = "project_id")
     private Project project;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    public Task(String n, LocalDate d, LocalTime s, LocalTime e, Project p) {
+    public Task(String n, LocalDate d, LocalTime s, LocalTime e, Project p, User u) {
         this.name = n;
         this.date = d;
         this.startTime = s;
         this.endTime = e;
+        this.duration = Duration.between(s, e);
         this.project = p;
+        this.user = u;
     }
 }
