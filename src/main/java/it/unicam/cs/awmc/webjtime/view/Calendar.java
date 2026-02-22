@@ -4,73 +4,57 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
-import jakarta.annotation.security.PermitAll;
+import jakarta.annotation.security.RolesAllowed;
 import it.unicam.cs.awmc.webjtime.model.Project;
 import it.unicam.cs.awmc.webjtime.model.Task;
 import it.unicam.cs.awmc.webjtime.service.ProjectService;
 import it.unicam.cs.awmc.webjtime.service.TaskService;
+import org.jspecify.annotations.NonNull;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.stream.Stream;
 
 import static it.unicam.cs.awmc.webjtime.view.MainLayout.showError;
 import static it.unicam.cs.awmc.webjtime.view.MainLayout.showSuccess;
+import static java.time.format.DateTimeFormatter.ofPattern;
 
-/**
- * Vista Calendario: mostra le task del giorno selezionato.
- *
- * @author Filippo Corallini (125587), filippo.corallini@studenti.unicam.it
- */
-@Route(value = "calendar", layout = MainLayout.class)
+@Route(value = "tasks", layout = MainLayout.class)
 @RouteAlias(value = "", layout = MainLayout.class)
 @PageTitle("Calendar")
-@PermitAll
+@RolesAllowed("USER")
 public class Calendar extends VerticalLayout {
-
-    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
-    private static final List<LocalTime> TIME_SLOTS = Stream
-            .iterate(LocalTime.MIDNIGHT, t -> t.plusMinutes(15))
-            .limit(24 * 4)
-            .toList();
-
-    private final TaskService taskService;
-    private final ProjectService projectService;
-    private final DatePicker datePicker = new DatePicker("Date");
+    private static final DateTimeFormatter TIME_FMT = ofPattern("HH:mm");
+    private final TaskService tService;
+    private final ProjectService pService;
+    private final DatePicker datePicker = new DatePicker("Seleziona data");
     private final Grid<Task> grid = new Grid<>(Task.class, false);
 
-    public Calendar(TaskService taskService, ProjectService projectService) {
-        this.taskService = taskService;
-        this.projectService = projectService;
+    public Calendar(TaskService tService, ProjectService pService) {
+        this.tService = tService;
+        this.pService = pService;
+        setSizeFull();
         configureGrid();
         configureDatePicker();
-        Button addBtn    = new Button("Add Task",    e -> openAddTaskDialog());
-        Button endBtn    = new Button("End Task",    e -> openEndTaskDialog());
-        Button deleteBtn = new Button("Delete Task", e -> deleteTask());
-        HorizontalLayout toolbar = new HorizontalLayout(datePicker, addBtn, endBtn, deleteBtn);
-        toolbar.setDefaultVerticalComponentAlignment(Alignment.END);
-        add(toolbar, grid);
-        setSizeFull();
+        Button createBtn = new Button("Aggiungi", e -> openCreateTaskDialog());
+        Button completeBtn = new Button("Completa", e -> openCompleteTaskDialog());
+        Button deleteBtn = new Button("Rimuovi", e -> deleteTask());
+        add(new HorizontalLayout(datePicker, createBtn, completeBtn, deleteBtn), grid);
         refresh();
     }
 
     private void configureGrid() {
-        grid.addColumn(Task::getName).setHeader("Name").setSortable(true);
-        grid.addColumn(task -> task.getProject() != null ? task.getProject().getName() : "-No Project-")
-                .setHeader("Project");
-        grid.addColumn(task -> task.getStartTime() != null ? task.getStartTime().format(TIME_FMT) : "-")
-                .setHeader("Start").setSortable(true);
-        grid.addColumn(task -> task.getEndTime() != null ? task.getEndTime().format(TIME_FMT) : "-")
-                .setHeader("End");
+        grid.addColumn(Task::getName).setHeader("Nome");
+        grid.addColumn(task -> task.getProject() != null ? task.getProject().getName() : "-No Project-").setHeader("Progetto");
+        grid.addColumn(task -> task.getStartTime().format(TIME_FMT)).setHeader("Ora d'inizio").setSortable(true);
+        grid.addColumn(task -> task.getEndTime().format(TIME_FMT)).setHeader("Ora di fine");
         grid.addColumn(Task::getStatus).setHeader("Status");
         grid.setSizeFull();
     }
@@ -83,72 +67,61 @@ public class Calendar extends VerticalLayout {
     private void refresh() {
         LocalDate selected = datePicker.getValue();
         if (selected == null) return;
-        grid.setItems(taskService.getTasksByDate(selected));
+        grid.setItems(tService.getTasksByDate(selected));
     }
 
-    private void openAddTaskDialog() {
-        TextField name = new TextField("Name");
-        ComboBox<Project> project = new ComboBox<>("Project");
-        project.setItems(projectService.getActiveProjects());
-        project.setItemLabelGenerator(Project::getName);
-        DatePicker date = new DatePicker("Date");
-        date.setValue(datePicker.getValue());
-        ComboBox<LocalTime> start = timeComboBox("Start");
-        ComboBox<LocalTime> end   = timeComboBox("End");
-        DialogBuilder.build("Add Task", dialog -> {
-            if (name.isEmpty()) { Notification.show("Name is required"); return; }
-            if (date.isEmpty() || start.isEmpty() || end.isEmpty()) { Notification.show("Fill in all fields"); return; }
+    private void openCreateTaskDialog() {
+        TextField n = new TextField("Nome");
+        ComboBox<Project> p = new ComboBox<>("Progetto");
+        p.setItems(pService.getActiveProjects());
+        p.setItemLabelGenerator(Project::getName);
+        DatePicker d = new DatePicker("Data");
+        d.setValue(datePicker.getValue());
+        ComboBox<LocalTime> s = timeComboBox("Ora d'inizio");
+        ComboBox<LocalTime> e = timeComboBox("Ora di fine");
+        DialogBuilder.build("Aggiungi una nuova task", dialog -> {
+            if (n.isEmpty() || d.isEmpty() || s.isEmpty() || e.isEmpty()) { showError("Riempire tutti i campi"); return; }
             try {
-                taskService.addTask(name.getValue(), date.getValue(), start.getValue(), end.getValue(), project.getValue());
+                tService.createTask(n.getValue(), d.getValue(), s.getValue(), e.getValue(), p.getValue());
                 dialog.close();
                 refresh();
-                showSuccess("Task added");
-            } catch (IllegalArgumentException | IllegalStateException ex) {
-                Notification.show(ex.getMessage());
-            }
-        }, name, project, date, start, end);
+                showSuccess("Task aggiunta con successo!");
+            } catch (IllegalArgumentException ex) { showError(ex.getMessage()); }
+        }, n, p, d, s, e);
     }
 
-    private void openEndTaskDialog() {
+    private void openCompleteTaskDialog() {
         grid.asSingleSelect().getOptionalValue().ifPresentOrElse(task -> {
-            ComboBox<LocalTime> start = timeComboBox("Actual Start");
-            ComboBox<LocalTime> end   = timeComboBox("Actual End");
-            start.setValue(task.getStartTime());
-            end.setValue(task.getEndTime());
-            DialogBuilder.build("End Task: " + task.getName(), "Confirm", dialog -> {
-                if (start.isEmpty() || end.isEmpty()) { Notification.show("Fill in both times"); return; }
+            ComboBox<LocalTime> s = timeComboBox("Ora d'inizio");
+            ComboBox<LocalTime> e = timeComboBox("Ora di fine");
+            s.setValue(task.getStartTime());
+            e.setValue(task.getEndTime());
+            DialogBuilder.build("Completa Task: " + task.getName(), "Confirm", dialog -> {
+                if (s.isEmpty() || e.isEmpty()) { showError("Riempire tutti i campi"); return; }
                 try {
-                    taskService.completeTask(task, start.getValue(), end.getValue());
+                    tService.completeTask(task, s.getValue(), e.getValue());
                     dialog.close();
                     refresh();
-                    showSuccess("Task completed");
-                } catch (IllegalArgumentException | IllegalStateException ex) {
-                    Notification.show(ex.getMessage());
-                }
-            }, start, end);
-        }, () -> Notification.show("Select a task first"));
+                    showSuccess("Task completata con successo!");
+                } catch (IllegalArgumentException | IllegalStateException ex) { showError(ex.getMessage()); }
+            }, s, e); }, () -> showError("Seleziona una task da completare"));
     }
 
     private void deleteTask() {
-        Task selected = grid.asSingleSelect().getValue();
-        if (selected == null) { showError("Select an ACTIVE task first"); return; }
-        DialogBuilder.build("Delete Task \"" + selected.getName() + "\"?",
-                "Delete",
-                dialog -> {
-                    try {
-                        taskService.deleteTask(selected);
-                        dialog.close();
-                        refresh();
-                        showSuccess("Task deleted");
-                    } catch (IllegalStateException ex) {
-                        Notification.show(ex.getMessage());
-                    }
-                });
+        grid.asSingleSelect().getOptionalValue().ifPresentOrElse(task ->
+            DialogBuilder.build("Eliminare " + task.getName() + "?", "Delete", dialog -> {
+                try {
+                    tService.deleteTask(task);
+                    dialog.close();
+                    refresh();
+                    showSuccess("Task eliminata con successo!");
+                } catch (IllegalStateException ex) { showError(ex.getMessage()); }
+            }), () -> showError("Seleziona una task da eliminare"));
     }
 
-    private ComboBox<LocalTime> timeComboBox(String label) {
+    private @NonNull ComboBox<LocalTime> timeComboBox(String label) {
         ComboBox<LocalTime> cb = new ComboBox<>(label);
-        cb.setItems(TIME_SLOTS);
+        cb.setItems(Stream.iterate(LocalTime.MIDNIGHT, t -> t.plusMinutes(15)).limit(24 * 4).toList());
         cb.setItemLabelGenerator(t -> t.format(TIME_FMT));
         return cb;
     }

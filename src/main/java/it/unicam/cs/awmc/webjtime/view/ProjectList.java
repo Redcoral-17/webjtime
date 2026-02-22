@@ -8,106 +8,94 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import jakarta.annotation.security.PermitAll;
 import it.unicam.cs.awmc.webjtime.model.Project;
 import it.unicam.cs.awmc.webjtime.service.ProjectService;
+import jakarta.annotation.security.RolesAllowed;
 
-import java.time.Duration;
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static it.unicam.cs.awmc.webjtime.view.MainLayout.showError;
 import static it.unicam.cs.awmc.webjtime.view.MainLayout.showSuccess;
+import static java.time.format.DateTimeFormatter.ofPattern;
 
-/**
- * Vista Progetti: mostra tutti i progetti con date e durata calcolate dalle task.
- *
- * @author Filippo Corallini (125587), filippo.corallini@studenti.unicam.it
- */
 @Route(value = "projects", layout = MainLayout.class)
-@PageTitle("Projects")
-@PermitAll
+@PageTitle("Lista dei Progetti")
+@RolesAllowed("USER")
 public class ProjectList extends VerticalLayout {
-
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-    private final ProjectService projectService;
+    private static final DateTimeFormatter DATE_FMT = ofPattern("dd/MM/yyyy");
+    private final ProjectService pService;
     private final Grid<Project> grid = new Grid<>(Project.class, false);
+    private Map<Long, ProjectService.ProjectStats> statsCache = Map.of();
 
-    public ProjectList(ProjectService projectService) {
-        this.projectService = projectService;
-        configureGrid();
-        Button addBtn    = new Button("Add Project",    e -> openAddProjectDialog());
-        Button endBtn    = new Button("End Project",    e -> endProject());
-        Button deleteBtn = new Button("Delete Project", e -> deleteProject());
-        add(new HorizontalLayout(addBtn, endBtn, deleteBtn), grid);
+    public ProjectList(ProjectService pService) {
+        this.pService = pService;
         setSizeFull();
+        configureGrid();
+        Button createBtn = new Button("Aggiungi", e -> openCreateProjectDialog());
+        Button completeBtn = new Button("Completa", e -> completeProject());
+        Button deleteBtn = new Button("Elimina", e -> deleteProject());
+        add(new HorizontalLayout(createBtn, completeBtn, deleteBtn), grid);
         refresh();
     }
 
     private void configureGrid() {
-        grid.addColumn(Project::getName).setHeader("Name").setSortable(true);
-        grid.addColumn(p -> {
-            LocalDate d = projectService.startOf(p);
-            return d != null ? d.format(DATE_FMT) : "-Not available-";
-        }).setHeader("Start");
-        grid.addColumn(p -> {
-            LocalDate d = projectService.endOf(p);
-            return d != null ? d.format(DATE_FMT) : "-Not available-";
-        }).setHeader("End");
-        grid.addColumn(p -> {
-            Duration d = projectService.durationOf(p);
-            return !d.isZero() ? d.toHours() + " h " + d.toMinutesPart() + " m" : "-Not available-";
-        }).setHeader("Duration");
-        grid.addColumn(Project::getStatus).setHeader("Status");
+        grid.addColumn(Project::getName).setHeader("Nome");
+        grid.addColumn(p -> { ProjectService.ProjectStats s = statsCache.get(p.getId());
+            return s != null && s.start() != null ? s.start().format(DATE_FMT) : "-Not available-";
+        }).setHeader("Ora d'inizio");
+        grid.addColumn(p -> { ProjectService.ProjectStats s = statsCache.get(p.getId());
+            return s != null && s.end() != null ? s.end().format(DATE_FMT) : "-Not available-";
+        }).setHeader("Ora di fine");
+        grid.addColumn(p -> { ProjectService.ProjectStats s = statsCache.get(p.getId());
+            return s != null && !s.duration().isZero() ? s.duration().toHours() + " h " + s.duration().toMinutesPart() + " m" : "-Not available-";
+        }).setHeader("Durata");
+        grid.addColumn(Project::getStatus).setHeader("Status").setSortable(true);
         grid.setSizeFull();
     }
 
     private void refresh() {
-        grid.setItems(projectService.getAllProjects());
+        List<Project> projects = pService.getAllProjects();
+        statsCache = projects.stream().collect(Collectors.toMap(Project::getId, pService::statsOf));
+        grid.setItems(projects);
     }
 
-    private void openAddProjectDialog() {
-        TextField name = new TextField("Project name");
-        DialogBuilder.build("New Project", dialog -> {
-            if (name.isEmpty()) { Notification.show("Name is required"); return; }
+    private void openCreateProjectDialog() {
+        TextField n = new TextField("Nome");
+        DialogBuilder.build("Crea un nuovo progetto", dialog -> {
+            if (n.isEmpty()) { Notification.show("Riempire tutti i campi"); return; }
             try {
-                projectService.createProject(name.getValue());
+                pService.createProject(n.getValue());
                 dialog.close();
                 refresh();
-                showSuccess("Project created");
-            } catch (IllegalArgumentException ex) {
-                Notification.show(ex.getMessage());
-            }
-        }, name);
+                showSuccess("Progetto creato con successo!");
+            } catch (IllegalArgumentException ex) { Notification.show(ex.getMessage()); }
+        }, n);
     }
 
-    private void endProject() {
-        Project selected = grid.asSingleSelect().getValue();
-        if (selected == null) { showError("Select a project first"); return; }
-        try {
-            projectService.completeProject(selected);
-            refresh();
-            showSuccess("Project completed");
-        } catch (IllegalStateException ex) {
-            showError(ex.getMessage());
-        }
+    private void completeProject() {
+        grid.asSingleSelect().getOptionalValue().ifPresentOrElse(project ->
+                        DialogBuilder.build("Completare " + project.getName() + "?", "Complete", dialog -> {
+                            try {
+                                pService.completeProject(project);
+                                dialog.close();
+                                refresh();
+                                showSuccess("Progetto completato con successo!");
+                            } catch (IllegalStateException ex) { showError(ex.getMessage()); }
+                        }), () -> showError("Seleziona un progetto da completare"));
     }
 
     private void deleteProject() {
-        Project selected = grid.asSingleSelect().getValue();
-        if (selected == null) { showError("Select a project first"); return; }
-        DialogBuilder.build("Delete Project",
-                "Delete",
-                dialog -> {
-                    try {
-                        projectService.deleteProject(selected);
-                        dialog.close();
-                        refresh();
-                        showSuccess("Project deleted");
-                    } catch (IllegalStateException ex) {
-                        Notification.show(ex.getMessage());
-                    }
-                });
+        grid.asSingleSelect().getOptionalValue().ifPresentOrElse(project ->
+                        DialogBuilder.build("Eliminare " + project.getName() + "?", "Delete", dialog -> {
+                            try {
+                                pService.deleteProject(project);
+                                dialog.close();
+                                refresh();
+                                showSuccess("Progetto eliminato con successo!");
+                            } catch (IllegalStateException ex) { showError(ex.getMessage()); }
+                        }), () -> showError("Seleziona un progetto da eliminare"));
     }
 }
