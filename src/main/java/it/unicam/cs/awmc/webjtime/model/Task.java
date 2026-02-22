@@ -9,7 +9,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Entity
-@AllArgsConstructor
 @Getter
 @NoArgsConstructor
 @Setter
@@ -27,7 +26,7 @@ public class Task {
     private LocalTime startTime;
     @Column(nullable = false)
     private LocalTime endTime;
-    private Duration duration = Duration.between(startTime, endTime);
+    private Duration duration;
     private Duration oldDuration = Duration.ZERO;
     @Enumerated(EnumType.STRING)
     private Status status = Status.ACTIVE;
