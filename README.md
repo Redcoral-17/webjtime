@@ -80,7 +80,7 @@ it.unicam.cs.awmc.webjtime
 
 ```bash
 # 1. Clona il repository
-git clone <url-repo>
+git clone https://github.com/Redcoral-17/webjtime.git
 cd webjtime
 
 # 2. Avvia in modalità dev (H2, nessuna configurazione necessaria)
@@ -93,7 +93,7 @@ L'app sarà disponibile su [http://localhost:8080](http://localhost:8080).
 
 ```bash
 # 1. Clona il repository
-git clone <url-repo>
+git clone https://github.com/Redcoral-17/webjtime.git
 cd webjtime
 
 # 2. Crea il file .env a partire dal template
