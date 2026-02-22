@@ -1,15 +1,12 @@
 package it.unicam.cs.awmc.webjtime.view;
+
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import java.util.function.Consumer;
-/**
- * Utility per la creazione uniforme di dialog modali con FormLayout e footer standard.
- *
- * @author Filippo Corallini (125587), filippo.corallini@studenti.unicam.it
- */
+
 public final class DialogBuilder {
     private DialogBuilder() {}
 

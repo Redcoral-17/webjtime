@@ -2,14 +2,15 @@ package it.unicam.cs.awmc.webjtime.view;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import it.unicam.cs.awmc.webjtime.model.Project;
+import it.unicam.cs.awmc.webjtime.model.User;
 import it.unicam.cs.awmc.webjtime.service.ProjectService;
+import it.unicam.cs.awmc.webjtime.service.UserService;
 import jakarta.annotation.security.RolesAllowed;
 
 import java.time.format.DateTimeFormatter;
@@ -27,11 +28,13 @@ import static java.time.format.DateTimeFormatter.ofPattern;
 public class ProjectList extends VerticalLayout {
     private static final DateTimeFormatter DATE_FMT = ofPattern("dd/MM/yyyy");
     private final ProjectService pService;
+    private final UserService uService;
     private final Grid<Project> grid = new Grid<>(Project.class, false);
     private Map<Long, ProjectService.ProjectStats> statsCache = Map.of();
 
-    public ProjectList(ProjectService pService) {
+    public ProjectList(ProjectService pService, UserService uService) {
         this.pService = pService;
+        this.uService = uService;
         setSizeFull();
         configureGrid();
         Button createBtn = new Button("Aggiungi", e -> openCreateProjectDialog());
@@ -45,10 +48,10 @@ public class ProjectList extends VerticalLayout {
         grid.addColumn(Project::getName).setHeader("Nome");
         grid.addColumn(p -> { ProjectService.ProjectStats s = statsCache.get(p.getId());
             return s != null && s.start() != null ? s.start().format(DATE_FMT) : "-Not available-";
-        }).setHeader("Ora d'inizio");
+        }).setHeader("Data d'inizio");
         grid.addColumn(p -> { ProjectService.ProjectStats s = statsCache.get(p.getId());
             return s != null && s.end() != null ? s.end().format(DATE_FMT) : "-Not available-";
-        }).setHeader("Ora di fine");
+        }).setHeader("Data di fine");
         grid.addColumn(p -> { ProjectService.ProjectStats s = statsCache.get(p.getId());
             return s != null && !s.duration().isZero() ? s.duration().toHours() + " h " + s.duration().toMinutesPart() + " m" : "-Not available-";
         }).setHeader("Durata");
@@ -57,21 +60,23 @@ public class ProjectList extends VerticalLayout {
     }
 
     private void refresh() {
-        List<Project> projects = pService.getAllProjects();
+        User u = uService.getCurrentUser();
+        List<Project> projects = pService.getAllProjects(u);
         statsCache = projects.stream().collect(Collectors.toMap(Project::getId, pService::statsOf));
         grid.setItems(projects);
     }
 
     private void openCreateProjectDialog() {
         TextField n = new TextField("Nome");
+        User u= uService.getCurrentUser();
         DialogBuilder.build("Crea un nuovo progetto", dialog -> {
-            if (n.isEmpty()) { Notification.show("Riempire tutti i campi"); return; }
+            if (n.isEmpty()) { showError("Riempire tutti i campi"); return; }
             try {
-                pService.createProject(n.getValue());
+                pService.createProject(n.getValue(), u);
                 dialog.close();
                 refresh();
                 showSuccess("Progetto creato con successo!");
-            } catch (IllegalArgumentException ex) { Notification.show(ex.getMessage()); }
+            } catch (IllegalArgumentException ex) { showError(ex.getMessage()); }
         }, n);
     }
 

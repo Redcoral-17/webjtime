@@ -11,26 +11,21 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
-import com.vaadin.flow.router.Layout;
 import com.vaadin.flow.theme.lumo.LumoUtility;
-import jakarta.annotation.security.PermitAll;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
-import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.util.Objects;
 
-/**
- * Layout principale dell'applicazione Vaadin.
- * Fornisce la navigazione laterale verso Calendar, Projects e Reports.
- *
- * @author Filippo Corallini (125587), filippo.corallini@studenti.unicam.it
- */
-@Layout
-@PermitAll
+import static com.vaadin.flow.component.notification.Notification.show;
+import static java.util.Objects.requireNonNull;
+import static org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes;
+
+@RolesAllowed("USER")
 public class MainLayout extends AppLayout {
+    private final Button logoutBtn = new Button("Logout", e -> logout());
 
     public MainLayout() {
         createHeader();
@@ -48,30 +43,31 @@ public class MainLayout extends AppLayout {
         addToNavbar(header);
     }
 
-    private final Button logoutBtn = new Button("Logout", e -> {
-        ServletRequestAttributes attr = (ServletRequestAttributes)
-                RequestContextHolder.currentRequestAttributes();
-        HttpServletRequest req = attr.getRequest();
-        HttpServletResponse res = attr.getResponse();
-        new SecurityContextLogoutHandler().logout(req, Objects.requireNonNull(res), null);
-        UI.getCurrent().getPage().setLocation("/login");
-    });
-
     private void createDrawer() {
         SideNav nav = new SideNav();
         nav.addItem(new SideNavItem("Calendar", Calendar.class));
-        nav.addItem(new SideNavItem("Project", ProjectList.class));
-        nav.addItem(new SideNavItem("Report", ReportList.class));
+        nav.addItem(new SideNavItem("Lista dei Progetti", ProjectList.class));
         addToDrawer(nav);
     }
 
     public static void showError(String message) {
-        Notification n = Notification.show(message, 3000, Notification.Position.MIDDLE);
-        n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+        showNotification(message, NotificationVariant.LUMO_ERROR);
     }
 
     public static void showSuccess(String message) {
-        Notification n = Notification.show(message, 3000, Notification.Position.MIDDLE);
-        n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        showNotification(message, NotificationVariant.LUMO_SUCCESS);
+    }
+
+    private void logout() {
+        ServletRequestAttributes attr = (ServletRequestAttributes) currentRequestAttributes();
+        HttpServletRequest req = attr.getRequest();
+        HttpServletResponse res = attr.getResponse();
+        new SecurityContextLogoutHandler().logout(req, requireNonNull(res), null);
+        UI.getCurrent().getPage().setLocation("/login");
+    }
+
+    private static void showNotification(String message, NotificationVariant variant) {
+        Notification n = show(message, 3000, Notification.Position.MIDDLE);
+        n.addThemeVariants(variant);
     }
 }

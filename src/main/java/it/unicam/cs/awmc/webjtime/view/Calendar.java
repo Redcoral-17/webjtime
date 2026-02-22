@@ -13,8 +13,10 @@ import com.vaadin.flow.router.RouteAlias;
 import jakarta.annotation.security.RolesAllowed;
 import it.unicam.cs.awmc.webjtime.model.Project;
 import it.unicam.cs.awmc.webjtime.model.Task;
+import it.unicam.cs.awmc.webjtime.model.User;
 import it.unicam.cs.awmc.webjtime.service.ProjectService;
 import it.unicam.cs.awmc.webjtime.service.TaskService;
+import it.unicam.cs.awmc.webjtime.service.UserService;
 import org.jspecify.annotations.NonNull;
 
 import java.time.LocalDate;
@@ -34,12 +36,14 @@ public class Calendar extends VerticalLayout {
     private static final DateTimeFormatter TIME_FMT = ofPattern("HH:mm");
     private final TaskService tService;
     private final ProjectService pService;
+    private final UserService uService;
     private final DatePicker datePicker = new DatePicker("Seleziona data");
     private final Grid<Task> grid = new Grid<>(Task.class, false);
 
-    public Calendar(TaskService tService, ProjectService pService) {
+    public Calendar(TaskService tService, ProjectService pService, UserService uService) {
         this.tService = tService;
         this.pService = pService;
+        this.uService = uService;
         setSizeFull();
         configureGrid();
         configureDatePicker();
@@ -67,13 +71,15 @@ public class Calendar extends VerticalLayout {
     private void refresh() {
         LocalDate selected = datePicker.getValue();
         if (selected == null) return;
-        grid.setItems(tService.getTasksByDate(selected));
+        User currentUser = uService.getCurrentUser();
+        grid.setItems(tService.getTasksByDate(currentUser, selected));
     }
 
     private void openCreateTaskDialog() {
         TextField n = new TextField("Nome");
+        User u = uService.getCurrentUser();
         ComboBox<Project> p = new ComboBox<>("Progetto");
-        p.setItems(pService.getActiveProjects());
+        p.setItems(pService.getActiveProjects(u));
         p.setItemLabelGenerator(Project::getName);
         DatePicker d = new DatePicker("Data");
         d.setValue(datePicker.getValue());
@@ -82,11 +88,11 @@ public class Calendar extends VerticalLayout {
         DialogBuilder.build("Aggiungi una nuova task", dialog -> {
             if (n.isEmpty() || d.isEmpty() || s.isEmpty() || e.isEmpty()) { showError("Riempire tutti i campi"); return; }
             try {
-                tService.createTask(n.getValue(), d.getValue(), s.getValue(), e.getValue(), p.getValue());
+                tService.createTask(n.getValue(), d.getValue(), s.getValue(), e.getValue(), p.getValue(), u);
                 dialog.close();
                 refresh();
                 showSuccess("Task aggiunta con successo!");
-            } catch (IllegalArgumentException ex) { showError(ex.getMessage()); }
+            } catch (IllegalArgumentException | IllegalStateException ex) { showError(ex.getMessage()); }
         }, n, p, d, s, e);
     }
 
