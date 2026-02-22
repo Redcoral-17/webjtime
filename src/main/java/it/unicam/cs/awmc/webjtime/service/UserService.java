@@ -2,9 +2,12 @@ package it.unicam.cs.awmc.webjtime.service;
 
 import it.unicam.cs.awmc.webjtime.model.User;
 import it.unicam.cs.awmc.webjtime.repository.UserRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import static java.util.Objects.requireNonNull;
 
 @Service
 @Transactional(readOnly = true)
@@ -15,6 +18,12 @@ public class UserService {
     public UserService(UserRepository uRepo, PasswordEncoder pwEncoder) {
         this.uRepo = uRepo;
         this.pwEncoder = pwEncoder;
+    }
+
+    public User getCurrentUser() {
+        String username = requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
+        return uRepo.findByUsername(username)
+                .orElseThrow(() -> new IllegalStateException("Utente autenticato non trovato: " + username));
     }
 
     @Transactional

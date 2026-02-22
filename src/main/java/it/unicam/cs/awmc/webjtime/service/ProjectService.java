@@ -3,6 +3,7 @@ package it.unicam.cs.awmc.webjtime.service;
 import it.unicam.cs.awmc.webjtime.model.Project;
 import it.unicam.cs.awmc.webjtime.model.Status;
 import it.unicam.cs.awmc.webjtime.model.Task;
+import it.unicam.cs.awmc.webjtime.model.User;
 import it.unicam.cs.awmc.webjtime.repository.ProjectRepository;
 import it.unicam.cs.awmc.webjtime.repository.TaskRepository;
 import org.jspecify.annotations.NonNull;
@@ -27,9 +28,9 @@ public class ProjectService {
         this.tRepo = tRepo;
     }
 
-    public List<Project> getAllProjects() { return pRepo.findAll(); }
+    public List<Project> getAllProjects(User u) { return pRepo.findByUser(u); }
 
-    public List<Project> getActiveProjects() { return pRepo.findByStatus(Status.ACTIVE); }
+    public List<Project> getActiveProjects(User u) { return pRepo.findByUserAndStatus(u, Status.ACTIVE); }
 
     public ProjectStats statsOf(@NonNull Project project) {
         LocalDate start = project.getStartDate();
@@ -38,25 +39,10 @@ public class ProjectService {
         return new ProjectStats(start, end, duration);
     }
 
-    @Deprecated
-    public LocalDate startOf(Project project) {
-        return statsOf(project).start();
-    }
-
-    @Deprecated
-    public LocalDate endOf(Project project) {
-        return statsOf(project).end();
-    }
-
-    @Deprecated
-    public Duration durationOf(Project project) {
-        return statsOf(project).duration();
-    }
-
     @Transactional
-    public void createProject(String n) {
+    public void createProject(String n, User u) {
         if (n == null || n.isBlank()) throw new IllegalArgumentException("Name is required");
-        pRepo.save(new Project(n));
+        pRepo.save(new Project(n, u));
     }
 
     @Transactional
