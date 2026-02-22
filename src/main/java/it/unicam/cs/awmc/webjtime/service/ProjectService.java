@@ -4,6 +4,8 @@ import it.unicam.cs.awmc.webjtime.model.Project;
 import it.unicam.cs.awmc.webjtime.model.Status;
 import it.unicam.cs.awmc.webjtime.model.Task;
 import it.unicam.cs.awmc.webjtime.repository.ProjectRepository;
+import it.unicam.cs.awmc.webjtime.repository.TaskRepository;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,75 +13,71 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * Service per la gestione dei Progetti.
- * Centralizza la logica di business separandola dalla View.
- * Risolve anche il problema N+1: calcola start/end/duration con query JPQL dedicate.
- *
- * @author Filippo Corallini (125587), filippo.corallini@studenti.unicam.it
- */
 @Service
 @Transactional(readOnly = true)
 public class ProjectService {
 
-    private final ProjectRepository projectRepo;
-    private final TaskService taskService;
+    public record ProjectStats(LocalDate start, LocalDate end, Duration duration) {}
 
-    public ProjectService(ProjectRepository projectRepo, TaskService taskService) {
-        this.projectRepo = projectRepo;
-        this.taskService = taskService;
+    private final ProjectRepository pRepo;
+    private final TaskRepository tRepo;
+
+    public ProjectService(ProjectRepository pRepo, TaskRepository tRepo) {
+        this.pRepo = pRepo;
+        this.tRepo = tRepo;
     }
 
-    public List<Project> getAllProjects() {
-        return projectRepo.findAll();
+    public List<Project> getAllProjects() { return pRepo.findAll(); }
+
+    public List<Project> getActiveProjects() { return pRepo.findByStatus(Status.ACTIVE); }
+
+    public ProjectStats statsOf(@NonNull Project project) {
+        LocalDate start = project.getStartDate();
+        LocalDate end = project.getEndDate();
+        Duration duration = getTasksByProject(project).stream().map(Task::getDuration).reduce(Duration::plus).orElse(Duration.ZERO);
+        return new ProjectStats(start, end, duration);
     }
 
-    public List<Project> getActiveProjects() {
-        return projectRepo.findByStatus(Status.ACTIVE);
-    }
-
-    /** Ritorna la data di inizio del progetto (min date tra le sue task). */
+    @Deprecated
     public LocalDate startOf(Project project) {
-        return taskService.getTasksByProject(project)
-                .stream().map(Task::getDate)
-                .min(LocalDate::compareTo).orElse(null);
+        return statsOf(project).start();
     }
 
-    /** Ritorna la data di fine del progetto (max date tra le sue task). */
+    @Deprecated
     public LocalDate endOf(Project project) {
-        return taskService.getTasksByProject(project)
-                .stream().map(Task::getDate)
-                .max(LocalDate::compareTo).orElse(null);
+        return statsOf(project).end();
     }
 
-    /** Ritorna la durata totale del progetto sommando le durate delle sue task. */
+    @Deprecated
     public Duration durationOf(Project project) {
-        return taskService.getTasksByProject(project)
-                .stream().map(Task::getDuration)
-                .reduce(Duration::plus).orElse(Duration.ZERO);
+        return statsOf(project).duration();
     }
 
     @Transactional
-    public void createProject(String name) {
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("Name is required");
-        projectRepo.save(new Project(name));
+    public void createProject(String n) {
+        if (n == null || n.isBlank()) throw new IllegalArgumentException("Name is required");
+        pRepo.save(new Project(n));
     }
 
     @Transactional
-    public void completeProject(Project project) {
-        List<Task> tasks = taskService.getTasksByProject(project);
+    public void completeProject(Project p) {
+        List<Task> tasks = getTasksByProject(p);
         if (tasks.isEmpty()) throw new IllegalStateException("Cannot end a project with no tasks");
         if (tasks.stream().anyMatch(t -> t.getStatus() != Status.COMPLETED))
-            throw new IllegalStateException("All tasks must be COMPLETED before ending the project");
-        project.setStatus(Status.COMPLETED);
-        projectRepo.save(project);
+            throw new IllegalStateException("All tasks must be completed before ending the project");
+        p.setStatus(Status.COMPLETED);
+        pRepo.save(p);
     }
 
     @Transactional
-    public void deleteProject(Project project) {
-        if (!taskService.getTasksByProject(project).isEmpty())
-            throw new IllegalStateException("Cannot delete a project with associated tasks");
-        projectRepo.delete(project);
+    public void deleteProject(@NonNull Project p) {
+        if (p.getStatus() != Status.ACTIVE) throw new IllegalStateException("Only active projects can be deleted");
+        if (!getTasksByProject(p).isEmpty()) throw new IllegalStateException("Cannot delete a project with associated tasks");
+        pRepo.delete(p);
+    }
+
+    private List<Task> getTasksByProject(Project p) {
+        return tRepo.findByProject(p);
     }
 }
 

@@ -3,7 +3,9 @@ package it.unicam.cs.awmc.webjtime.service;
 import it.unicam.cs.awmc.webjtime.model.Project;
 import it.unicam.cs.awmc.webjtime.model.Status;
 import it.unicam.cs.awmc.webjtime.model.Task;
+import it.unicam.cs.awmc.webjtime.repository.ProjectRepository;
 import it.unicam.cs.awmc.webjtime.repository.TaskRepository;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,68 +14,66 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
-/**
- * Service per la gestione delle Task.
- * Centralizza la logica di business separandola dalla View.
- *
- * @author Filippo Corallini (125587), filippo.corallini@studenti.unicam.it
- */
 @Service
 @Transactional(readOnly = true)
 public class TaskService {
+    private final TaskRepository tRepo;
+    private final ProjectRepository pRepo;
 
-    private final TaskRepository taskRepo;
-
-    public TaskService(TaskRepository taskRepo) {
-        this.taskRepo = taskRepo;
+    public TaskService(TaskRepository tRepo, ProjectRepository pRepo) {
+        this.tRepo = tRepo;
+        this.pRepo = pRepo;
     }
 
-    public List<Task> getTasksByDate(LocalDate date) {
-        return taskRepo.findByDateOrderByStartTimeAsc(date);
-    }
-
-    public List<Task> getTasksByProject(Project project) {
-        return taskRepo.findByProject(project);
-    }
-
-    public List<Task> getTasksByDateRange(LocalDate start, LocalDate end) {
-        if (start != null && end != null) return taskRepo.findByDateBetween(start, end);
-        if (start != null)               return taskRepo.findByDateGreaterThanEqual(start);
-        if (end != null)                 return taskRepo.findByDateLessThanEqual(end);
-        return taskRepo.findAll();
-    }
-
-    public boolean hasOverlap(LocalDate date, LocalTime start, LocalTime end, Long excludeId) {
-        return !taskRepo.findOverlapping(date, start, end, excludeId).isEmpty();
+    public List<Task> getTasksByDate(LocalDate d) {
+        return tRepo.findByDateOrderByStartTimeAsc(d);
     }
 
     @Transactional
-    public void addTask(String name, LocalDate date, LocalTime start, LocalTime end, Project project) {
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("Name is required");
-        if (date == null || start == null || end == null) throw new IllegalArgumentException("Date, start and end are required");
-        if (start.isAfter(end)) throw new IllegalArgumentException("Start cannot be after End");
-        if (hasOverlap(date, start, end, null)) throw new IllegalStateException("A task already exists in this time slot");
-        taskRepo.save(new Task(name, date, start, end, project));
+    public void createTask(String n, LocalDate d, LocalTime s, LocalTime e, Project p) {
+        if (n == null || n.isBlank()) throw new IllegalArgumentException("Name is required");
+        if (d == null || s == null || e == null) throw new IllegalArgumentException("Date, start and end are required");
+        if (s.isAfter(e)) throw new IllegalArgumentException("Start cannot be after end");
+        if (hasOverlap(d, s, e, Status.ACTIVE)) throw new IllegalStateException("Overlaps with another active task");
+        tRepo.save(new Task(n, d, s, e, p));
+        if (p != null) refreshProjectDates(p);
     }
 
     @Transactional
-    public void completeTask(Task task, LocalTime actualStart, LocalTime actualEnd) {
-        if (task.getStatus() != Status.ACTIVE) throw new IllegalStateException("Task is already completed");
-        if (actualStart == null || actualEnd == null) throw new IllegalArgumentException("Both times are required");
-        if (actualStart.isAfter(actualEnd)) throw new IllegalArgumentException("Start cannot be after End");
-        if (hasOverlap(task.getDate(), actualStart, actualEnd, task.getId())) throw new IllegalStateException("Overlaps with another task");
-        task.setOldDuration(task.getDuration());
-        task.setStartTime(actualStart);
-        task.setEndTime(actualEnd);
-        task.setDuration(Duration.between(actualStart, actualEnd));
-        task.setStatus(Status.COMPLETED);
-        taskRepo.save(task);
+    public void completeTask(@NonNull Task t, LocalTime s, LocalTime e) {
+        if (t.getStatus() != Status.ACTIVE) throw new IllegalStateException("Task is already completed");
+        if (s == null || e == null) throw new IllegalArgumentException("Start and end are required");
+        if (s.isAfter(e)) throw new IllegalArgumentException("Start cannot be after end");
+        if (hasOverlap(t.getDate(), s, e, Status.COMPLETED)) throw new IllegalStateException("Overlaps with another completed task");
+        t.setOldDuration(t.getDuration());
+        t.setStartTime(s);
+        t.setEndTime(e);
+        t.setDuration(Duration.between(s, e));
+        t.setStatus(Status.COMPLETED);
+        tRepo.save(t);
+        if (t.getProject() != null) refreshProjectDates(t.getProject());
     }
 
     @Transactional
-    public void deleteTask(Task task) {
-        if (task.getStatus() != Status.ACTIVE) throw new IllegalStateException("Only ACTIVE tasks can be deleted");
-        taskRepo.delete(task);
+    public void deleteTask(@NonNull Task t) {
+        if (t.getStatus() != Status.ACTIVE) throw new IllegalStateException("Only active tasks can be deleted");
+        Project project = t.getProject();
+        tRepo.delete(t);
+        if (project != null) refreshProjectDates(project);
+    }
+
+    private boolean hasOverlap(LocalDate d, LocalTime s, LocalTime e, Status st) {
+        List<Task> tasks = tRepo.findByDateAndStatus(d, st);
+        for (Task task : tasks) {
+            if (task.getStartTime().isBefore(e) && task.getEndTime().isAfter(s)) return true;
+        }
+        return false;
+    }
+
+    private void refreshProjectDates(@NonNull Project p) {
+        List<Task> tasks = tRepo.findByProject(p);
+        p.setStartDate(tasks.stream().map(Task::getDate).min(LocalDate::compareTo).orElse(LocalDate.now()));
+        p.setEndDate(tasks.stream().map(Task::getDate).max(LocalDate::compareTo).orElse(LocalDate.now()));
+        pRepo.save(p);
     }
 }
-
