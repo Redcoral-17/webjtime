@@ -10,22 +10,22 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
-    private final UserRepository userRepo;
+    private final UserRepository uRepo;
     private final PasswordEncoder pwEncoder;
     @Value("${app.admin.username}")
     private String adminUsername;
     @Value("${app.admin.password}")
     private String adminPassword;
 
-    public DataInitializer(UserRepository userRepo, PasswordEncoder pwEncoder) {
-        this.userRepo = userRepo;
+    public DataInitializer(UserRepository uRepo, PasswordEncoder pwEncoder) {
+        this.uRepo = uRepo;
         this.pwEncoder = pwEncoder;
     }
 
     @Override
     public void run(String @NonNull ... args) {
-        if (userRepo.findByUsername(adminUsername).isEmpty()) {
-            userRepo.save(new User(adminUsername, pwEncoder.encode(adminPassword)));
+        if (uRepo.findByUsername(adminUsername).isEmpty()) {
+            uRepo.save(new User(adminUsername, pwEncoder.encode(adminPassword)));
         }
     }
 

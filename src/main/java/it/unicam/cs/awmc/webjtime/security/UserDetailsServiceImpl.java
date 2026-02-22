@@ -21,7 +21,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     public @NonNull UserDetails loadUserByUsername(@NonNull String username) throws UsernameNotFoundException {
         return userRepo.findByUsername(username)
                 .map(u -> new User(u.getUsername(), u.getPassword(),
-                        List.of(new SimpleGrantedAuthority("USER_ROLE"))))
+                        List.of(new SimpleGrantedAuthority("ROLE_USER"))))
                 .orElseThrow(() -> new UsernameNotFoundException("User " + username + " not found"));
     }
 
