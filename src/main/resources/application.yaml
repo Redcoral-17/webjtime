@@ -2,14 +2,14 @@ spring:
   application:
     name: webjtime
   datasource:
-    url: jdbc:postgresql://localhost:5432/webjtime
+    url: ${DATABASE_URL}
     driver-class-name: org.postgresql.Driver
     username: ${DATABASE_USERNAME}
     password: ${DATABASE_PASSWORD}
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
 app:
@@ -17,5 +17,5 @@ app:
     username: ${ADMIN_USERNAME}
     password: ${ADMIN_PASSWORD}
 
-Vaadin:
+vaadin:
   launch-browser: false

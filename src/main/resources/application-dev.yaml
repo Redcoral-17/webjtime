@@ -9,7 +9,6 @@ spring:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: create-drop
-
 app:
   admin:
     username: ${ADMIN_USERNAME:dev_admin}
