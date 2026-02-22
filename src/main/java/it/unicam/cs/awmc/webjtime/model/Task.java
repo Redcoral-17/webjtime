@@ -2,10 +2,7 @@ package it.unicam.cs.awmc.webjtime.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -37,4 +34,12 @@ public class Task {
     @ManyToOne
     @JoinColumn(name = "project_id")
     private Project project;
+
+    public Task(String n, LocalDate d, LocalTime s, LocalTime e, Project p) {
+        this.name = n;
+        this.date = d;
+        this.startTime = s;
+        this.endTime = e;
+        this.project = p;
+    }
 }

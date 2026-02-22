@@ -1,14 +1,12 @@
 package it.unicam.cs.awmc.webjtime.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Table(name = "users")
-@AllArgsConstructor
 @Getter
 @NoArgsConstructor
 @Setter
@@ -20,4 +18,9 @@ public class User {
     private String username;
     @Column(nullable = false)
     private String password;
+
+    public User(String u, String pw) {
+        this.username = u;
+        this.password = pw;
+    }
 }

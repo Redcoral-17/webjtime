@@ -22,8 +22,12 @@ public class Project {
     @NotBlank
     @Column(nullable = false)
     private String name;
-    private LocalDate startDate;
-    private LocalDate endDate;
+    private LocalDate startDate = LocalDate.now();
+    private LocalDate endDate = LocalDate.now();
     @Enumerated(EnumType.STRING)
     private Status status = Status.ACTIVE;
+
+    public Project(String n) {
+        this.name = n;
+    }
 }
