@@ -7,8 +7,10 @@ spring:
   jpa:
     show-sql: true
     database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
 
 app:
   admin:
-    username: red_coral
-    password: Fico@#6013
+    username: ${ADMIN_USERNAME:dev_admin}
+    password: ${ADMIN_PASSWORD:changeme_dev}

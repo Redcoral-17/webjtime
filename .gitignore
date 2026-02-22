@@ -1,5 +1,4 @@
 node_modules
-HELP.md
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -37,7 +36,14 @@ out/
 ### VS Code ###
 .vscode/
 
-### Credentials ###
+### Credentials & Secrets ###
 .env
+.env.local
+.env.*.local
+
+### Database files ###
 file/
+*.mv.db
+*.trace.db
+*.db
 
