@@ -8,9 +8,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import it.unicam.cs.awmc.webjtime.model.Project;
-import it.unicam.cs.awmc.webjtime.model.User;
 import it.unicam.cs.awmc.webjtime.service.ProjectService;
-import it.unicam.cs.awmc.webjtime.service.UserService;
 import jakarta.annotation.security.RolesAllowed;
 
 import java.time.format.DateTimeFormatter;
@@ -28,13 +26,11 @@ import static java.time.format.DateTimeFormatter.ofPattern;
 public class ProjectList extends VerticalLayout {
     private static final DateTimeFormatter DATE_FMT = ofPattern("dd/MM/yyyy");
     private final ProjectService pService;
-    private final UserService uService;
     private final Grid<Project> grid = new Grid<>(Project.class, false);
     private Map<Long, ProjectService.ProjectStats> statsCache = Map.of();
 
-    public ProjectList(ProjectService pService, UserService uService) {
+    public ProjectList(ProjectService pService) {
         this.pService = pService;
-        this.uService = uService;
         setSizeFull();
         configureGrid();
         Button createBtn = new Button("Aggiungi", e -> openCreateProjectDialog());
@@ -60,19 +56,17 @@ public class ProjectList extends VerticalLayout {
     }
 
     private void refresh() {
-        User u = uService.getCurrentUser();
-        List<Project> projects = pService.getAllProjects(u);
+        List<Project> projects = pService.getAllProjects();
         statsCache = projects.stream().collect(Collectors.toMap(Project::getId, pService::statsOf));
         grid.setItems(projects);
     }
 
     private void openCreateProjectDialog() {
         TextField n = new TextField("Nome");
-        User u= uService.getCurrentUser();
         DialogBuilder.build("Crea un nuovo progetto", dialog -> {
             if (n.isEmpty()) { showError("Riempire tutti i campi"); return; }
             try {
-                pService.createProject(n.getValue(), u);
+                pService.createProject(n.getValue());
                 dialog.close();
                 refresh();
                 showSuccess("Progetto creato con successo!");
