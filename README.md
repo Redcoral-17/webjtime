@@ -1,7 +1,7 @@
 # JTime4Web
 
 Applicazione web cloud-native per il **time tracking** di task e progetti personali.  
-Costruita con **Spring Boot 4 + Vaadin 25 + PostgreSQL**, deployabile con Docker Compose.
+Costruita con **Spring Boot 4.0.3 + Vaadin 25.0.5 + PostgreSQL 16**, deployabile con Docker Compose.
 
 ---
 
@@ -53,16 +53,16 @@ it.unicam.cs.awmc.webjtime
 
 ## Stack tecnologico
 
-| Livello | Tecnologia |
-|---|---|
-| Frontend / UI | Vaadin 25 (SPA, tema Lumo responsive) |
-| Backend | Spring Boot 4, Spring Security 6, Spring Data JPA |
-| Database (prod) | PostgreSQL 16 |
-| Database (dev) | H2 in-memory |
-| Build | Gradle 8 con Gradle Wrapper |
-| Containerizzazione | Docker + Docker Compose |
-| CI/CD | GitHub Actions |
-| Java | 21 (Temurin) |
+| Livello | Tecnologia | Versione |
+|---|---|---|
+| Frontend / UI | Vaadin (SPA, tema Lumo responsive) | 25.0.5 |
+| Backend | Spring Boot, Spring Security 6, Spring Data JPA | 4.0.3 |
+| Database (prod) | PostgreSQL | 16 (driver 42.7.3) |
+| Database (dev/test) | H2 in-memory | 2.2.224 |
+| Build | Gradle con Gradle Wrapper | 8 |
+| Containerizzazione | Docker + Docker Compose | — |
+| CI/CD | GitHub Actions | — |
+| Java | Temurin | 21 |
 
 ---
 
@@ -98,9 +98,10 @@ cd webjtime
 
 # 2. Crea il file .env a partire dal template
 cp .env.example .env
-# Modifica .env con le credenziali desiderate
 
-# 3. Avvia tutti i servizi
+# 3. Modifica .env con le credenziali desiderate
+
+# 4. Avvia tutti i servizi
 docker compose up --build
 ```
 
@@ -150,7 +151,7 @@ Copiare `.env.example` in `.env` e personalizzare i valori.
 # build/reports/tests/test/index.html
 ```
 
-I test coprono la business logic dei service (`ProjectService`, `TaskService`, `UserService`) usando H2 in-memory.
+I test coprono la business logic dei service (`ProjectService`, `TaskService`, `UserService`) usando H2 in-memory con profilo `dev` (schema `create-drop`).
 
 ---
 
@@ -173,7 +174,7 @@ Dopo l'avvio (con qualsiasi profilo) viene creato automaticamente un utente admi
 
 La pipeline GitHub Actions (`.github/workflows/ci.yml`) si attiva ad ogni push/PR su `main`/`master` ed esegue:
 
-1. **Build & Test** — `./gradlew test` con profilo `dev` (H2)
+1. **Build & Test** — `./gradlew test` con profilo `dev` (H2 in-memory)
 2. **Build Docker image** — build multi-stage dell'immagine (solo su push, non pubblicata)
 
 ---
@@ -186,16 +187,21 @@ webjtime/
 ├── src/
 │   ├── main/
 │   │   ├── java/                ← Codice sorgente (MVC)
+│   │   │   └── it.unicam.cs.awmc.webjtime/
+│   │   │       ├── model/       ← Entità JPA
+│   │   │       ├── repository/  ← Spring Data repositories
+│   │   │       ├── service/     ← Business logic
+│   │   │       ├── security/    ← Autenticazione e autorizzazione
+│   │   │       └── view/        ← Vaadin views
 │   │   └── resources/
-│   │       ├── application.yaml           ← Config produzione
-│   │       └── application-dev.yaml       ← Config sviluppo (H2)
-│   └── test/java/               ← Test unitari
+│   │       ├── application.yaml           ← Config produzione (PostgreSQL)
+│   │       └── application-dev.yaml       ← Config sviluppo (H2 in-memory)
+│   └── test/java/               ← Test unitari (JUnit 5)
 ├── docs/
-│   └── architecture.md          ← Diagrammi architettura/deploy
-├── Dockerfile                   ← Build multi-stage
-├── docker-compose.yml           ← Orchestrazione app + PostgreSQL
+│   └── architecture.md          ← Diagrammi architettura/deploy/ER
+├── Dockerfile                   ← Build multi-stage (JDK 21 → JRE 21)
+├── docker-compose.yml           ← Orchestrazione app + PostgreSQL 16
 ├── .env.example                 ← Template variabili d'ambiente
-├── build.gradle                 ← Dipendenze e plugin
+├── build.gradle                 ← Dipendenze e plugin Gradle
 └── README.md                    ← Questo file
 ```
-
