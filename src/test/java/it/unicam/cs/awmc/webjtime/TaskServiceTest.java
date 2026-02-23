@@ -12,6 +12,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,11 +41,14 @@ class TaskServiceTest {
         projectRepository.deleteAll();
         userRepository.deleteAll();
         user = userRepository.save(new User("tester", "password"));
+        SecurityContextHolder.getContext().setAuthentication(
+            new UsernamePasswordAuthenticationToken("tester", "password",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))));
     }
 
     @Test
     void createTask_shouldPersistTask() {
-        taskService.createTask("Task1", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), null, user);
+        taskService.createTask("Task1", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), null);
         List<Task> tasks = taskRepository.findByUserAndDateOrderByStartTimeAsc(user, TODAY);
         assertThat(tasks).hasSize(1);
         assertThat(tasks.getFirst().getName()).isEqualTo("Task1");
@@ -50,33 +56,33 @@ class TaskServiceTest {
 
     @Test
     void createTask_blankName_shouldThrow() {
-        assertThatThrownBy(() -> taskService.createTask("", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), null, user))
+        assertThatThrownBy(() -> taskService.createTask("", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void createTask_startAfterEnd_shouldThrow() {
-        assertThatThrownBy(() -> taskService.createTask("T", TODAY, LocalTime.of(11, 0), LocalTime.of(9, 0), null, user))
+        assertThatThrownBy(() -> taskService.createTask("T", TODAY, LocalTime.of(11, 0), LocalTime.of(9, 0), null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void createTask_overlappingActive_shouldThrow() {
-        taskService.createTask("Task1", TODAY, LocalTime.of(9, 0), LocalTime.of(11, 0), null, user);
-        assertThatThrownBy(() -> taskService.createTask("Task2", TODAY, LocalTime.of(10, 0), LocalTime.of(12, 0), null, user))
+        taskService.createTask("Task1", TODAY, LocalTime.of(9, 0), LocalTime.of(11, 0), null);
+        assertThatThrownBy(() -> taskService.createTask("Task2", TODAY, LocalTime.of(10, 0), LocalTime.of(12, 0), null))
                 .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void createTask_adjacentTimes_shouldNotOverlap() {
-        taskService.createTask("Task1", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), null, user);
+        taskService.createTask("Task1", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), null);
         assertThatNoException().isThrownBy(() ->
-                taskService.createTask("Task2", TODAY, LocalTime.of(10, 0), LocalTime.of(11, 0), null, user));
+                taskService.createTask("Task2", TODAY, LocalTime.of(10, 0), LocalTime.of(11, 0), null));
     }
 
     @Test
     void completeTask_shouldSetStatusAndNewTimes() {
-        taskService.createTask("Task", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), null, user);
+        taskService.createTask("Task", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), null);
         Task task = taskRepository.findByUserAndDateOrderByStartTimeAsc(user, TODAY).getFirst();
         taskService.completeTask(task, LocalTime.of(9, 15), LocalTime.of(10, 15));
         Task updated = taskRepository.findById(task.getId()).orElseThrow();
@@ -87,7 +93,7 @@ class TaskServiceTest {
 
     @Test
     void completeTask_alreadyCompleted_shouldThrow() {
-        taskService.createTask("Task", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), null, user);
+        taskService.createTask("Task", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), null);
         Task task = taskRepository.findByUserAndDateOrderByStartTimeAsc(user, TODAY).getFirst();
         taskService.completeTask(task, LocalTime.of(9, 0), LocalTime.of(10, 0));
         assertThatThrownBy(() -> taskService.completeTask(task, LocalTime.of(9, 0), LocalTime.of(10, 0)))
@@ -96,7 +102,7 @@ class TaskServiceTest {
 
     @Test
     void deleteTask_active_shouldRemove() {
-        taskService.createTask("Task", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), null, user);
+        taskService.createTask("Task", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), null);
         Task task = taskRepository.findByUserAndDateOrderByStartTimeAsc(user, TODAY).getFirst();
         taskService.deleteTask(task);
         assertThat(taskRepository.findByUserAndDateOrderByStartTimeAsc(user, TODAY)).isEmpty();
@@ -104,7 +110,7 @@ class TaskServiceTest {
 
     @Test
     void deleteTask_completed_shouldThrow() {
-        taskService.createTask("Task", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), null, user);
+        taskService.createTask("Task", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), null);
         Task task = taskRepository.findByUserAndDateOrderByStartTimeAsc(user, TODAY).getFirst();
         taskService.completeTask(task, LocalTime.of(9, 0), LocalTime.of(10, 0));
         assertThatThrownBy(() -> taskService.deleteTask(task)).isInstanceOf(IllegalStateException.class);
@@ -113,11 +119,10 @@ class TaskServiceTest {
     @Test
     void createTask_withProject_shouldUpdateProjectDates() {
         Project project = projectRepository.save(new Project("Progetto", user));
-        taskService.createTask("T", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), project, user);
+        taskService.createTask("T", TODAY, LocalTime.of(9, 0), LocalTime.of(10, 0), project);
         Project updated = projectRepository.findById(project.getId()).orElseThrow();
         assertThat(updated.getStartDate()).isEqualTo(TODAY);
         assertThat(updated.getEndDate()).isEqualTo(TODAY);
     }
 }
-
 
