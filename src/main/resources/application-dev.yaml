@@ -11,5 +11,5 @@ spring:
       ddl-auto: create-drop
 app:
   admin:
-    username: ${ADMIN_USERNAME:dev_admin}
-    password: ${ADMIN_PASSWORD:changeme_dev}
+    username: dev_admin
+    password: changeme_dev
