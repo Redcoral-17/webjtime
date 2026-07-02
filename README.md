@@ -362,10 +362,10 @@ Dopo l'avvio (con qualsiasi profilo) viene creato automaticamente un utente admi
 
 **Profilo dev (avvio con `--spring.profiles.active=dev`):**
 
-| Campo | Valore |
-|---|---|
-| Username | `dev_admin` |
-| Password | `changeme_dev` |
+| Campo | Valore         |
+|---|----------------|
+| Username | `dev_admin`    |
+| Password | `dev_password` |
 
 È anche possibile **registrare liberamente nuovi utenti** dalla pagina `/register`.
 
