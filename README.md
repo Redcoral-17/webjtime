@@ -43,9 +43,9 @@ Costruita con **Spring Boot 4.0.3 + Vaadin 25.0.5 + PostgreSQL 16**, deployabile
 |---|---|---|
 | Frontend / UI | Vaadin (SPA, tema Lumo responsive) | 25.0.5 |
 | Backend | Spring Boot, Spring Security 6, Spring Data JPA | 4.0.3 |
-| Database (prod) | PostgreSQL | 16 (driver 42.7.3) |
+| Database (prod) | PostgreSQL | 16 (driver 42.7.11) |
 | Database (dev/test) | H2 in-memory | 2.2.224 |
-| Build | Gradle con Gradle Wrapper | 8 |
+| Build | Gradle con Gradle Wrapper | 9.3.1 |
 | Containerizzazione | Docker + Docker Compose | — |
 | CI/CD | GitHub Actions | — |
 | Java | Temurin | 21 |
@@ -224,7 +224,7 @@ push / PR su main o master
 | Spring Security | `implementation` | (BOM) | Autenticazione form-based, `BCryptPasswordEncoder`, `UserDetailsService`, filtri HTTP |
 | Vaadin | `implementation` | 25.0.5 | Framework UI server-side; SPA in Java, tema Lumo responsive, routing `@Route` |
 | Lombok | `compileOnly` + `annotationProcessor` | (BOM) | `@Getter`, `@Setter`, `@NoArgsConstructor` sulle entità JPA |
-| PostgreSQL driver | `runtimeOnly` | 42.7.3 | Driver JDBC per produzione; configurato via variabili d'ambiente |
+| PostgreSQL driver | `runtimeOnly` | 42.7.11 | Driver JDBC per produzione; configurato via variabili d'ambiente |
 | H2 | `developmentOnly` + `testImplementation` | 2.2.224 | DB in-memory per sviluppo locale e test (`create-drop`) |
 | Spring Boot Test | `testImplementation` | (BOM) | JUnit 5 + Mockito + AssertJ + `@SpringBootTest` |
 | JUnit Platform Launcher | `testRuntimeOnly` | (BOM) | Esecuzione test Gradle |
@@ -303,7 +303,11 @@ git clone https://github.com/Redcoral-17/webjtime.git
 cd webjtime
 
 # 2. Crea il file .env a partire dal template
+# Linux/macOS:
 cp .env.example .env
+
+# Windows PowerShell:
+Copy-Item .env.example .env
 
 # 3. Modifica .env con le credenziali desiderate
 
@@ -356,7 +360,7 @@ Tutti i test usano `@SpringBootTest` (contesto Spring completo) + H2 in-memory c
 
 Dopo l'avvio (con qualsiasi profilo) viene creato automaticamente un utente admin.
 
-**Profilo dev (default locale):**
+**Profilo dev (avvio con `--spring.profiles.active=dev`):**
 
 | Campo | Valore |
 |---|---|
